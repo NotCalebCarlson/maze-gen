@@ -2,17 +2,17 @@ from flags import flag, process_flags, program_flags
 from random import random
 import pygame
 
-MINIMUM_PATH_LENGTH = 50
+MINIMUM_PATH_LENGTH = 30
 
 PROBABILITIES = [
-    ("Forward", 10),
+    ("Forward", 5),
     ("Left", 2),
     ("Right", 2),
     ("Tee Right", 0.1),
     ("Tee Left", 0.1),
     ("Tee", 0.1),
     ("Cross", 0.1),
-    ("Dead", 0.1)
+    ("Dead", 0)
 ]
 
 class MazeCell:
@@ -68,6 +68,10 @@ class MazeWall:
             other: The old wall.
             maze_state: The state of the maze.
         """
+        if len(other.sibling_cells) > len(self.sibling_cells):
+            other.merge(self, maze_state)
+            return
+
         if self == other:
             raise Exception("Wall was merged into self.")
         if other.is_master and self.is_master:
@@ -583,25 +587,27 @@ def generate(width, height):
 if __name__ == "__main__":
     process_flags()
 
-    maze = generate(801, 801)
+    width = (1920//10) * 2 + 1
+    height = (1080//10) * 2 + 1
+
+    wall_width = 6
+    hall_width = 4
+
+    offset = 0
+    maze = generate(width, height)
 
     # Based off of quickstart code from pygame.org
     pygame.init()
-    screen = pygame.display.set_mode((1000, 1000))
+    screen = pygame.display.set_mode(((width-1) / 2 * (hall_width + wall_width) + wall_width + offset * 2, (height-1) / 2 * (hall_width + wall_width) + wall_width + offset * 2))
     #surface = pygame.display.get_surface()
     clock = pygame.time.Clock()
     running = True
 
-    screen.fill("white")
+    screen.fill(pygame.Color(5, 5, 5))
     pygame.display.flip()
-
-    wall_width = 1
-    hall_width = 2
 
     rect_width = wall_width
     rect_height = wall_width
-
-    offset = 10
 
     x_ = offset
     y_ = offset
@@ -618,12 +624,19 @@ if __name__ == "__main__":
                 rect_width = hall_width
 
             if maze[x][y].type == "Wall":
-                screen.fill("black", pygame.Rect(x_, y_, rect_width, rect_height))
+                intensity = int(maze[x][y].wall_ref.id % 2) * 200
+                screen.fill(pygame.Color(0, 30, 30), pygame.Rect(x_, y_, rect_width, rect_height))
+            else:
+                intensity = min(int((((maze[x][y].path_length % 300) / 300) * 255)), 255)
+                # int((y/height)*50), int((x/width)*150)
+                #screen.fill(pygame.Color(int(intensity * 0.8), intensity, intensity), pygame.Rect(x_, y_, rect_width, rect_height))
             x_ += rect_width
         x_ = offset
         y_ += rect_height
     
     pygame.display.flip()
+    pygame.image.save(screen, "images/maze.png")
+
     while running == True:
 
         for event in pygame.event.get():
